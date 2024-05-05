@@ -150,8 +150,8 @@ wait_after_n() {
 
 main() {
 
-  wait_after_n 10 3600
-  # wait_after_n 2 120
+  # wait_after_n 10 3600
+  wait_after_n 3 1800
 
   # Automatic correction of Modname, if name in save game not matching MOD_NAME
   MOD_NAME=$(civ4-extract-modname "$ALTROOT_WITH_DOMAIN" "$MOD_NAME")

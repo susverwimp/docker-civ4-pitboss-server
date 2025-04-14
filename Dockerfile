@@ -2,7 +2,7 @@ FROM ubuntu:bionic
 
 # NOTE: We need wine and many libs in it's 32bit variant for Civ4
 # This will be satified on debian based os by --add-architecture
-# If this script should be converted on Arch Linux 
+# If this script should be converted on Arch Linux
 # use lib32-prefixed packages.
 
 RUN dpkg --add-architecture i386 \
@@ -17,9 +17,8 @@ RUN dpkg --add-architecture i386 \
     && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys BBB8BD3BBE6AD3419048EDC50795A9A788A59C82 \
     && curl -fsSL https://dl.winehq.org/wine-builds/winehq.key | apt-key add - \
     && apt-get update \
-    && true
-
-RUN    apt-get install -y --no-install-recommends \
+    && true \
+    && apt-get install -y --no-install-recommends \
         supervisor \
         libgl1-mesa-glx:i386 \
         winehq-stable \
@@ -35,7 +34,14 @@ RUN    apt-get install -y --no-install-recommends \
         expect tcl \
 # for startPitboss.py (currently not used) \
 #        python2.7 \
-        && true
+    && true
+    && echo "Clean caches" \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get autoremove -y \
+    && apt-get autoclean -y \
+    && mkdir -p /tmp/.X11-unix \
+    && chmod 1777 /tmp/.X11-unix \
+    && true
 
 ## Newer winetricks
 #RUN wget -O "/usr/bin/winetricks" \
@@ -58,33 +64,12 @@ RUN    apt-get install -y --no-install-recommends \
 RUN mkdir -p /usr/share/wine
 COPY files/msxml3.msi /usr/share/wine/.
 
-RUN echo "Clean caches" \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get autoremove -y \
-    && apt-get autoclean -y \
-    && mkdir -p /tmp/.X11-unix \
-    && chmod 1777 /tmp/.X11-unix \
-    && true
 
-
-# Overwrite this with --build-arg with proper values.
-ARG UNAME="civpb-docker"
-ARG UID=1000
-ARG GID=1000 
-
-
-RUN groupadd -g "$GID" -o "$UNAME" \
-    && useradd -m -u "$UID" -g "$GID" -s /bin/bash "$UNAME" \
-# Wine root dir is /app ; mount point for Civ4 is /app/Civ4
-    && mkdir /app \
-    && chown "$UID:$GID" /app \
-# Parent for "PBs" mount
+RUN mkdir /app \
     && mkdir /altroot \
-    && chown "$UID:$GID" /altroot \
     && true
 
 
-USER "${UNAME}"
 ENV WINEPREFIX=/app WINEARCH=win32
 
 # Do not remove 'sleep 10 ' lines. They preventing a corrupt WINEDIR.
@@ -94,7 +79,7 @@ ENV WINEPREFIX=/app WINEARCH=win32
 RUN wineboot --update \
     && sleep 10 \
 # Remove previous file because it's version number is so high that
-# installer will not overwriting it. 
+# installer will not overwriting it.
     && rm "$WINEPREFIX/drive_c/windows/system32/msxml3.dll" \
 #    && winetricks --unattended msxml3 \
     && wine msiexec /i "/usr/share/wine/msxml3.msi" /qn \
@@ -127,7 +112,7 @@ RUN wineboot --update \
 #
 #    ../PBs/ should also contain the 'Python' subfolder of civ4-mp/pbmod!!
 #
-#    Symbolic link just used for easier path structure 
+#    Symbolic link just used for easier path structure
 #    during mount of container.
 #RUN mkdir -p "/home/${USER}/_https_pb.zulan.net/pb" \
 #    && ln -s "/home/${USER}/PBs" "/home/${USER}/_https_pb.zulan.net/pb/PBs" \
@@ -135,7 +120,6 @@ RUN wineboot --update \
 # ======> Shifted into run-pb-server to made domain flexible.
 
 
-USER root
 COPY files/run-pb-server \
   files/civ4-extract-modname \
   files/confirm-popup \
@@ -157,7 +141,7 @@ COPY files/supervisord.conf \
 
 # For --user mode Give user right to create pid-file
 RUN touch /supervisord.pid \
-    && chown $UNAME:root /supervisord.pid \
+    && chown root:root /supervisord.pid \
     && true
 
 #EXPOSE 2056 13373 3333
@@ -166,12 +150,12 @@ RUN touch /supervisord.pid \
 #  3333: PBServer optional interactive shell for running game
 #
 # Note 1: Die ports dynamisch zu halten hat hier Vorteile. Bei fixen Ports
-# kann man inner- und außerhalb des Containers nicht die gleichen 
+# kann man inner- und außerhalb des Containers nicht die gleichen
 # Konfigurationsdateien (pbSettings.json CivilizationIV.ini) nehmen, da dort
 # die Ports enthalten sind. Die Dateien werden vom PBServer regelmäßig überschrieben.
 # Die richtigen Ports werden vor dem Start von civ4-mp/pbmod/PBs/startPitboss.py bestimmt.
-# 
-# Note 2: Expose-Ports werden nicht automatisch beim Starten weitergeleitet. 
+#
+# Note 2: Expose-Ports werden nicht automatisch beim Starten weitergeleitet.
 #       Nur mit 'run -P ...' würden sie an höhere Ports delegiert.
 #
 # => Aus beiden Gründen wird auf die Angabe per EXPOSE verzichtet.
